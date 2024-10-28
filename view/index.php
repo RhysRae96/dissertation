@@ -1,3 +1,6 @@
+<?php
+session_start();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,7 +19,13 @@
             <li><a href="#about">About</a></li>
             <li><a href="#contact">Contact</a></li>
         </ul>
-        <a href="#login" class="login-button">Login</a>
+        
+        <?php if (isset($_SESSION['user_id'])): ?>
+            <a href="logout.php" class="logout-button">Logout</a>
+        <?php else: ?>
+            <a href="login.php" class="login-button">Login</a>
+            <a href="register.php" class="register-button">Register</a>
+        <?php endif; ?>
     </nav>
 
     <!-- Main content -->

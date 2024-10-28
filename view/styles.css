@@ -54,3 +54,16 @@ main {
 .login-button:hover {
     background-color: #45a049;
 }
+
+/* Style for the register button */
+.register-button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+.register-button:hover {
+    background-color: #45a049;
+}
