@@ -71,65 +71,49 @@ class AuthController {
             $password = $_POST['password'];
     
             $user = new User();
-            $userData = $user->getUserByUsernameOrEmail($identifier);
     
-            // Define throttling parameters
-            $maxAttempts = 3; // Maximum allowed failed attempts
-            $lockoutTime = 5 * 60; // Lockout duration in seconds (e.g., 5 minutes)
-    
-            // Retrieve failed attempts data
-            $failedAttemptsData = $user->getFailedAttempts($identifier);
-            $failedAttempts = $failedAttemptsData['failed_attempts'] ?? 0;
-            $lastFailedAttempt = $failedAttemptsData['last_failed_attempt'] ?? null;
-    
-            // Check for lockout
-            if ($failedAttempts >= $maxAttempts) {
-                $lastAttemptTime = strtotime($lastFailedAttempt);
-                $currentTime = time();
-    
-                if (($currentTime - $lastAttemptTime) < $lockoutTime) {
-                    $remainingLockoutTime = $lockoutTime - ($currentTime - $lastAttemptTime);
-                    $_SESSION['error_message'] = "Too many failed attempts. Please try again after " . ceil($remainingLockoutTime / 60) . " minutes.";
-                    header("Location: ../view/login.php");
-                    exit();
-                } else {
-                    // Reset failed attempts if lockout period has expired
-                    $user->resetFailedAttempts($identifier);
-                    $failedAttempts = 0; // Reset the counter in the current context
-                }
+            // 🚨 Check if the account is locked BEFORE proceeding
+            if ($user->isAccountLocked($identifier)) {
+                error_log("Account is locked for user: $identifier. Redirecting to login page.");
+                $_SESSION['error_message'] = "Your account is locked due to too many failed login attempts. Please try again after 5 minutes.";
+                header("Location: ../view/login.php");
+                exit();
             }
     
-            // Validate user credentials
-            if (!$userData || !password_verify($password, $userData['password'])) {
-                // Increment failed attempts on incorrect credentials
-                $user->incrementFailedAttempts($identifier);
-                $remainingAttempts = $maxAttempts - ($failedAttempts + 1);
+            // Proceed with fetching user data and verifying the password
+            $userData = $user->getUserByUsernameOrEmail($identifier);
     
-                if ($remainingAttempts > 0) {
-                    $_SESSION['error_message'] = "Invalid username/email or password. You have $remainingAttempts attempt(s) remaining before your account is locked.";
+            // ✅ Validate user credentials
+            if ($userData && password_verify($password, $userData['password'])) {
+                // 🛠 Reset failed attempts after successful login
+                $user->resetFailedAttempts($identifier);
+    
+                // ✅ Set session variables and redirect the user
+                $_SESSION['user_id'] = $userData['user_id'];
+                $_SESSION['username'] = $userData['username'];
+    
+                header("Location: ../view/index.php");
+                exit();
+            } else {
+                // 🚨 Increment failed attempts on incorrect login
+                $remainingAttempts = $user->incrementFailedAttempts($identifier);
+    
+                // 🔴 Check if the account was locked during this attempt
+                if ($user->isAccountLocked($identifier)) {
+                    error_log("Account locked during this login attempt for user: $identifier");
+                    $_SESSION['error_message'] = "Your account has been locked due to too many failed login attempts. Please try again after 5 minutes.";
                 } else {
-                    $_SESSION['error_message'] = "Invalid username/email or password. Your account has been locked due to multiple failed login attempts. Please try again after " . ($lockoutTime / 60) . " minutes.";
+                    // Provide feedback to the user about remaining attempts
+                    $_SESSION['error_message'] = "Invalid username/email or password. You have $remainingAttempts attempt(s) remaining.";
                 }
     
                 header("Location: ../view/login.php");
                 exit();
             }
-    
-            // Successful login
-            // Reset failed attempts after successful login
-            $user->resetFailedAttempts($identifier);
-    
-            // Set session variables and redirect the user
-            $_SESSION['user_id'] = $userData['user_id'];
-            $_SESSION['username'] = $userData['username'];
-    
-            header("Location: ../view/index.php");
-            exit();
         } else {
             require "../view/login.php";
         }
     }
-    
     
     
     public function changePassword() {

@@ -96,27 +96,41 @@ class User {
     }
  
     public function incrementFailedAttempts($identifier) {
-        // Increment failed attempts and update the last_failed_attempt timestamp
+        $maxAttempts = 3; // Maximum allowed failed attempts
+    
+        // Increment failed attempts
         $query = "UPDATE users 
                   SET failed_attempts = failed_attempts + 1, 
-                      last_failed_attempt = NOW()
+                      last_failed_attempt = NOW() 
                   WHERE username = :identifier OR email = :identifier";
         $stmt = $this->conn->prepare($query);
         $stmt->bindValue(':identifier', $identifier);
         $stmt->execute();
     
-        // Check if failed attempts have reached the maximum
-        $maxAttempts = 3;
-        $attempts = $this->getFailedAttempts($identifier)['failed_attempts'];
-        if ($attempts >= $maxAttempts) {
-            // Set the account as locked and record the lockout time
+        // Fetch the updated failed attempts count
+        $query = "SELECT failed_attempts FROM users WHERE username = :identifier OR email = :identifier";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':identifier', $identifier);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        // Calculate remaining attempts
+        $remainingAttempts = $maxAttempts - $result['failed_attempts'];
+    
+        // Lock the account if the user has reached the max failed attempts
+        if ($result['failed_attempts'] >= $maxAttempts) {
+            $lockoutDuration = 5 * 60; // Lockout duration in seconds (5 minutes)
+            $expiryTime = date('Y-m-d H:i:s', time() + $lockoutDuration);
             $lockQuery = "UPDATE users 
-                          SET is_locked = TRUE, lockout_time = NOW()
+                          SET is_locked = 1, lockout_expiry = :expiryTime 
                           WHERE username = :identifier OR email = :identifier";
             $lockStmt = $this->conn->prepare($lockQuery);
+            $lockStmt->bindValue(':expiryTime', $expiryTime);
             $lockStmt->bindValue(':identifier', $identifier);
             $lockStmt->execute();
         }
+    
+        return $remainingAttempts;
     }
     
     
@@ -124,13 +138,14 @@ class User {
         $query = "UPDATE users 
                   SET failed_attempts = 0, 
                       last_failed_attempt = NULL, 
-                      is_locked = FALSE, 
-                      lockout_time = NULL
+                      is_locked = 0, 
+                      lockout_expiry = NULL 
                   WHERE username = :identifier OR email = :identifier";
         $stmt = $this->conn->prepare($query);
         $stmt->bindValue(':identifier', $identifier);
         $stmt->execute();
     }
+    
     
     public function getFailedAttempts($identifier) {
         $query = "SELECT failed_attempts, last_failed_attempt, is_locked, lockout_time 
@@ -142,33 +157,41 @@ class User {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
     
+    
     public function isAccountLocked($identifier) {
-        $lockoutDuration = 5 * 60; // 5 minutes
-        $data = $this->getFailedAttempts($identifier);
-        if ($data['is_locked']) {
-            $lockoutTime = strtotime($data['lockout_time']);
+        // Fetch lockout data
+        $query = "SELECT is_locked, lockout_expiry FROM users WHERE username = :identifier OR email = :identifier";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':identifier', $identifier);
+        $stmt->execute();
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        if ($data && $data['is_locked'] == 1) {
             $currentTime = time();
-            if (($currentTime - $lockoutTime) < $lockoutDuration) {
-                // Account is still locked
+            $lockoutExpiryTime = strtotime($data['lockout_expiry']);
+    
+            if ($currentTime < $lockoutExpiryTime) {
+                // 🚨 Account is still locked
+                error_log("Account is still locked for user: $identifier");
                 return true;
             } else {
-                // Lockout period has expired; unlock the account
+                // ✅ Unlock the account if the lockout period has expired
                 $this->resetFailedAttempts($identifier);
                 return false;
             }
         }
-        return false;
+    
+        return false; // Account is not locked
     }
     
     
-    
-    public function getUserByUsernameOrEmail($identifier) {
-        $query = "SELECT * FROM " . $this->table . " WHERE username = :identifier OR email = :identifier LIMIT 1";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindValue(':identifier', $identifier);
-        $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
+     public function getUserByUsernameOrEmail($identifier) {
+         $query = "SELECT * FROM " . $this->table . " WHERE username = :identifier OR email = :identifier LIMIT 1";
+         $stmt = $this->conn->prepare($query);
+         $stmt->bindValue(':identifier', $identifier);
+         $stmt->execute();
+         return $stmt->fetch(PDO::FETCH_ASSOC);
+     }
     
 //EXPIRMENTING
     public function generateEmailVerificationToken($userID) {

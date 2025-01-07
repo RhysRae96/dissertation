@@ -26,7 +26,7 @@ if (isset($_SESSION['error_message'])) {
         <div class="form-container">
             <h2>Login</h2>
 
-            <!-- Display error message if exists -->
+            <!-- Display error message if it exists -->
             <?php if (!empty($error_message)): ?>
                 <p class="flash-message error"><?php echo htmlspecialchars($error_message); ?></p>
             <?php endif; ?>
