@@ -69,48 +69,67 @@ class AuthController {
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $identifier = $_POST['username'];
             $password = $_POST['password'];
+            $totpCode = isset($_POST['totp_code']) ? $_POST['totp_code'] : null;
     
             $user = new User();
     
-            // 🚨 Check if the account is locked BEFORE proceeding
+            // Check if the account is locked BEFORE proceeding
             if ($user->isAccountLocked($identifier)) {
-                error_log("Account is locked for user: $identifier. Redirecting to login page.");
                 $_SESSION['error_message'] = "Your account is locked due to too many failed login attempts. Please try again after 5 minutes.";
                 header("Location: ../view/login.php");
                 exit();
             }
     
-            // Proceed with fetching user data and verifying the password
+            // Fetch user data and verify the password
             $userData = $user->getUserByUsernameOrEmail($identifier);
     
-            // ✅ Validate user credentials
+            // ✅ Check if the user exists and the password is correct
             if ($userData && password_verify($password, $userData['password'])) {
-                // 🛠 Reset failed attempts after successful login
+                // Check if the user has MFA enabled
+                if ($userData['is_mfa_enabled']) {
+                    $_SESSION['mfa_required'] = true;
+    
+                    // ✅ If MFA is enabled, verify the authentication code
+                    if (!$user->verifyTotpCode($totpCode, $userData['user_id'])) {
+                        $_SESSION['error_message'] = "Invalid authentication code.";
+                        header("Location: ../view/login.php");
+                        exit();
+                    }
+                } else {
+                    $_SESSION['mfa_required'] = false;
+                }
+    
+                // Reset failed attempts after successful login
                 $user->resetFailedAttempts($identifier);
     
                 // ✅ Set session variables and redirect the user
                 $_SESSION['user_id'] = $userData['user_id'];
                 $_SESSION['username'] = $userData['username'];
     
+                // ✅ Clear the `mfa_required` session variable after successful login
+                unset($_SESSION['mfa_required']);
+    
                 header("Location: ../view/index.php");
                 exit();
             } else {
-                // 🚨 Increment failed attempts on incorrect login
+                // Increment failed attempts on incorrect login
                 $remainingAttempts = $user->incrementFailedAttempts($identifier);
     
-                // 🔴 Check if the account was locked during this attempt
-                if ($user->isAccountLocked($identifier)) {
-                    error_log("Account locked during this login attempt for user: $identifier");
-                    $_SESSION['error_message'] = "Your account has been locked due to too many failed login attempts. Please try again after 5 minutes.";
-                } else {
-                    // Provide feedback to the user about remaining attempts
-                    $_SESSION['error_message'] = "Invalid username/email or password. You have $remainingAttempts attempt(s) remaining.";
-                }
-    
+                // Provide feedback to the user about remaining attempts
+                $_SESSION['error_message'] = "Invalid username/email or password. You have $remainingAttempts attempt(s) remaining.";
                 header("Location: ../view/login.php");
                 exit();
             }
         } else {
+            // ✅ Check if MFA is required before showing the login form
+            $isMfaEnabled = false;
+            if (isset($_SESSION['username'])) {
+                $user = new User();
+                $userData = $user->getUserByUsernameOrEmail($_SESSION['username']);
+                $isMfaEnabled = $userData['is_mfa_enabled'];
+            }
+    
+            $_SESSION['mfa_required'] = $isMfaEnabled;
             require "../view/login.php";
         }
     }
@@ -181,6 +200,40 @@ class AuthController {
             }
         }
     }
+    public function verifyTotp() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+    
+        if ($_SERVER["REQUEST_METHOD"] == "POST") {
+            $userId = $_SESSION['user_id'];
+            $totpCode = $_POST['totp_code'];
+    
+            $user = new User();
+    
+            // Get the user's TOTP secret from the database
+            $userData = $user->getUserByID($userId);
+            if (!$userData['totp_secret']) {
+                $_SESSION['error_message'] = "TOTP secret not found. Please set up MFA.";
+                header("Location: ../view/mfa_setup.php");
+                exit();
+            }
+    
+            // Verify the TOTP code
+            if ($user->verifyTotpCode($totpCode, $userId)) {
+                // ✅ Success: Enable MFA for the user
+                $user->enableMfa($userId);
+                $_SESSION['message'] = "Multi-Factor Authentication enabled successfully.";
+                header("Location: ../view/dashboard.php");
+            } else {
+                // ❌ Failure: TOTP code is incorrect
+                $_SESSION['error_message'] = "Invalid authentication code. Please try again.";
+                header("Location: ../view/mfa_setup.php");
+            }
+    
+            exit();
+        }
+    }
 }    
 
 // Main logic to handle actions based on `action` input
@@ -192,6 +245,7 @@ if (isset($_POST['action'])) {
         $authController->login();
     } elseif ($_POST['action'] === 'change_password') {
         $authController->changePassword();
+    } elseif ($_POST['action'] === 'verify_totp') {
+        $authController->verifyTotp();
     }
 }
-?>

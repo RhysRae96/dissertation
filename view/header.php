@@ -1,5 +1,8 @@
 <?php
-session_start();
+// Only start the session if it's not already active
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -16,7 +19,7 @@ session_start();
         <ul>
             <li><a href="index.php">Home</a></li>
             <li><a href="page_unavailable.php">About</a></li>
-            <li><a href="page_unavailable.php">Contact</a></li>
+            <li><a href="mfa_setup.php">Multifactor</a></li>
         </ul>
         
         <div class="auth-buttons">
