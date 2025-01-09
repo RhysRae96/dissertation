@@ -194,6 +194,15 @@ class User {
         $stmt->execute();
     }
     
+    public function disableMfa($userId) {
+        // Query to update `is_mfa_enabled` to 0 and set `totp_secret` to NULL
+        $query = "UPDATE users SET is_mfa_enabled = 0, totp_secret = NULL WHERE user_id = :user_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_STR); // Ensure it's bound as a string
+        return $stmt->execute();
+    }
+    
+    
     
 //EXPIRMENTING
     public function generateEmailVerificationToken($userID) {

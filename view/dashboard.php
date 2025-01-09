@@ -1,5 +1,5 @@
 <?php
-
+require_once "../model/User.php";
 // Only start the session if it's not already active
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -8,6 +8,17 @@ if (session_status() === PHP_SESSION_NONE) {
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
+}
+
+// Initialize the User class
+$user = new User();
+
+// Fetch the user data to check if MFA is enabled
+$userData = $user->getUserByID($_SESSION['user_id']);
+$isMfaEnabled = false;
+
+if ($userData && isset($userData['is_mfa_enabled'])) {
+    $isMfaEnabled = (bool)$userData['is_mfa_enabled'];
 }
 ?>
 
@@ -33,10 +44,25 @@ if (!isset($_SESSION['user_id'])) {
         </div>
     </nav>
 
+    <!-- Dashboard Content -->
     <div class="dashboard-page">
         <div class="dashboard-container">
-            <h1 class="dashboard-title">Well Done!, <?php echo htmlspecialchars($_SESSION['username']); ?>!</h1>
-            <p class="dashboard-message">Multi-Factor Authentication has been successfully enabled.</p>
+            <?php if ($isMfaEnabled): ?>
+                <!-- MFA Enabled Message -->
+                <h1 class="dashboard-title">Well Done, <?php echo htmlspecialchars($_SESSION['username']); ?>!</h1>
+                <p class="dashboard-message">
+                    Multi-Factor Authentication has been successfully enabled.
+                </p>
+            <?php else: ?>
+                <!-- MFA Disabled Message -->
+                <h1 class="dashboard-title">MFA Disabled, <?php echo htmlspecialchars($_SESSION['username']); ?>!</h1>
+                <p class="dashboard-message">
+                    You have successfully disabled Multi-Factor Authentication.
+                    <br><a href="index.php" class="dashboard-link">Return to Home
+                </p>
+            <?php endif; ?>
+
+            <!-- Logout Button -->
             <div class="dashboard-actions">
                 <a href="logout.php" class="dashboard-button">Logout</a>
             </div>

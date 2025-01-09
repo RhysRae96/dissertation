@@ -234,6 +234,25 @@ class AuthController {
             exit();
         }
     }
+
+    public function disableMfa() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+    
+        $userId = $_SESSION['user_id'];
+        $user = new User();
+    
+        if ($user->disableMfa($userId)) {
+            $_SESSION['flash_message'] = "You have successfully disabled Multi-Factor Authentication.";
+            header("Location: ../view/dashboard.php");
+            exit();
+        } else {
+            $_SESSION['error_message'] = "Failed to disable MFA. Please try again.";
+            header("Location: ../view/mfa_setup.php");
+            exit();
+        }
+    }
 }    
 
 // Main logic to handle actions based on `action` input
@@ -247,5 +266,8 @@ if (isset($_POST['action'])) {
         $authController->changePassword();
     } elseif ($_POST['action'] === 'verify_totp') {
         $authController->verifyTotp();
+    } elseif ($_POST['action'] === 'disable_mfa') {
+        $authController->disableMfa();
     }
 }
+
