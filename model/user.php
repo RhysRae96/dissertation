@@ -80,6 +80,18 @@ class User {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    public function changePassword($userID, $newPassword) {
+        $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
+    
+        $query = "UPDATE users SET password = :password WHERE user_id = :user_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':password', $hashedPassword);
+        $stmt->bindParam(':user_id', $userID);
+    
+        return $stmt->execute();
+    }
+    
+
     public function incrementFailedAttempts($identifier) {
         $maxAttempts = 3;
         $query = "UPDATE users SET failed_attempts = failed_attempts + 1, last_failed_attempt = NOW() WHERE username = :identifier OR email = :identifier";
@@ -198,11 +210,10 @@ class User {
         // Query to update `is_mfa_enabled` to 0 and set `totp_secret` to NULL
         $query = "UPDATE users SET is_mfa_enabled = 0, totp_secret = NULL WHERE user_id = :user_id";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindValue(':user_id', $userId, PDO::PARAM_STR); // Ensure it's bound as a string
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_STR);
+    
         return $stmt->execute();
     }
-    
-    
     
 //EXPIRMENTING
     public function generateEmailVerificationToken($userID) {

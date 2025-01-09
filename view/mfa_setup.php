@@ -16,6 +16,16 @@ if (!isset($_SESSION['user_id'])) {
 $user = new User();
 $userData = $user->getUserByID($_SESSION['user_id']);
 $isMfaEnabled = $userData['is_mfa_enabled'];
+
+if (isset($_SESSION['message'])) {
+    echo '<p class="flash-message" style="color: green;">' . $_SESSION['message'] . '</p>';
+    unset($_SESSION['message']);
+}
+
+if (isset($_SESSION['error_message'])) {
+    echo '<p class="flash-message" style="color: red;">' . $_SESSION['error_message'] . '</p>';
+    unset($_SESSION['error_message']);
+}
 ?>
 
 <!DOCTYPE html>
@@ -33,9 +43,14 @@ $isMfaEnabled = $userData['is_mfa_enabled'];
                 <h2 class="form-title">MFA Already Enabled</h2>
                 <p class="form-text">You have already enabled Multi-Factor Authentication.<a href="index.php">Return to Home</a></p>
                 <form action="../controller/authController.php" method="post" class="form-content">
-                    <input type="hidden" name="action" value="disable_mfa">
-                    <button type="submit" class="form-button">Disable MFA</button>
-                </form>
+    <input type="hidden" name="action" value="disable_mfa">
+
+    <label for="totp_code" class="form-label">Enter MFA Code:</label>
+    <input type="text" id="totp_code" name="totp_code" class="form-input" required>
+
+    <button type="submit" class="form-button">Disable MFA</button>
+</form>
+
             <?php else: ?>
                 <h2 class="form-title">Enable Multi-Factor Authentication</h2>
                 <p class="form-text">Scan this QR code with your Google Authenticator app:</p>

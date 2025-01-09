@@ -12,6 +12,11 @@ if (isset($_SESSION['error_message'])) {
     unset($_SESSION['error_message']);
 }
 
+if (isset($_SESSION['message'])) {
+    echo '<p class="flash-message" style="color: green;">' . $_SESSION['message'] . '</p>';
+    unset($_SESSION['message']); // Clear the message after displaying
+}
+
 $isMfaEnabled = isset($_SESSION['mfa_required']) ? $_SESSION['mfa_required'] : false;
 ?>
 

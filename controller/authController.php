@@ -1,5 +1,6 @@
 <?php
 require_once "../model/User.php";
+use Sonata\GoogleAuthenticator\GoogleAuthenticator;
 
 class AuthController {
     // Validates password based on length and allows all characters
@@ -136,7 +137,10 @@ class AuthController {
     
     
     public function changePassword() {
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+    
         if (!isset($_SESSION['user_id'])) {
             $_SESSION['message'] = "Error: User not logged in.";
             header("Location: ../view/change_password.php");
@@ -147,11 +151,12 @@ class AuthController {
             $currentPassword = $_POST['current_password'];
             $newPassword = $_POST['new_password'];
             $confirmPassword = $_POST['confirm_password'];
+            $totpCode = isset($_POST['totp_code']) ? $_POST['totp_code'] : null;
     
             $userID = $_SESSION['user_id'];
             $user = new User();
     
-            // Fetch user data to validate the current password
+            // Fetch user data to validate the current password and check if MFA is enabled
             $userData = $user->getUserByID($userID);
     
             // Check if the current password is correct
@@ -184,12 +189,19 @@ class AuthController {
                 exit();
             }
     
+            // ✅ Check if the user has MFA enabled
+            if ($userData['is_mfa_enabled']) {
+                // Verify the MFA code
+                $googleAuthenticator = new GoogleAuthenticator();
+                if (!$googleAuthenticator->checkCode($userData['totp_secret'], $totpCode)) {
+                    $_SESSION['message'] = "Error: Invalid MFA code.";
+                    header("Location: ../view/change_password.php");
+                    exit();
+                }
+            }
+    
             // Update the password
             if ($user->changePassword($userID, $newPassword)) {
-                // Destroy the session and redirect to the login page with a success message
-                session_unset();
-                session_destroy();
-                session_start();
                 $_SESSION['message'] = "Success: Your password has been updated. Please log in with your new password.";
                 header("Location: ../view/login.php");
                 exit();
@@ -200,6 +212,8 @@ class AuthController {
             }
         }
     }
+    
+
     public function verifyTotp() {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -240,22 +254,46 @@ class AuthController {
             session_start();
         }
     
-        $userId = $_SESSION['user_id'];
-        $user = new User();
+        if ($_SERVER["REQUEST_METHOD"] === "POST") {
+            $userId = $_SESSION['user_id'];
+            $totpCode = $_POST['totp_code'];
     
-        if ($user->disableMfa($userId)) {
-            $_SESSION['flash_message'] = "You have successfully disabled Multi-Factor Authentication.";
-            header("Location: ../view/dashboard.php");
-            exit();
-        } else {
-            $_SESSION['error_message'] = "Failed to disable MFA. Please try again.";
-            header("Location: ../view/mfa_setup.php");
-            exit();
+            $user = new User();
+    
+            // Get the user's TOTP secret from the database
+            $userData = $user->getUserByID($userId);
+            $userSecret = $userData['totp_secret'];
+    
+            // Check if the user has a TOTP secret
+            if (!$userSecret) {
+                $_SESSION['error_message'] = "Error: No TOTP secret found. MFA is not enabled.";
+                header("Location: ../view/mfa_setup.php");
+                exit();
+            }
+    
+            // Verify the TOTP code
+            $googleAuthenticator = new GoogleAuthenticator();
+            if (!$googleAuthenticator->checkCode($userSecret, $totpCode)) {
+                $_SESSION['error_message'] = "Error: Invalid MFA code. Please try again.";
+                header("Location: ../view/mfa_setup.php");
+                exit();
+            }
+    
+            // Disable MFA and reset the TOTP secret
+            if ($user->disableMfa($userId)) {
+                $_SESSION['message'] = "Success: Multi-Factor Authentication has been disabled.";
+                header("Location: ../view/mfa_setup.php");
+                exit();
+            } else {
+                $_SESSION['error_message'] = "Error: Failed to disable MFA. Please try again.";
+                header("Location: ../view/mfa_setup.php");
+                exit();
+            }
         }
     }
-}    
+    
+}
 
-// Main logic to handle actions based on `action` input
 if (isset($_POST['action'])) {
     $authController = new AuthController();
     if ($_POST['action'] === 'register') {
@@ -270,4 +308,3 @@ if (isset($_POST['action'])) {
         $authController->disableMfa();
     }
 }
-
