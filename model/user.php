@@ -29,6 +29,10 @@ class User {
         );
     }
 
+    public function getConnection() {
+        return $this->conn;
+    }
+
     public function register($username, $email, $password) {
         $userID = $this->generateUUID();
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
@@ -264,5 +268,26 @@ class User {
         }
         return false; // Verification failed
     }
+
+    public function getLogs($actionFilter = null) {
+        $query = "SELECT * FROM logs";
+        
+        if ($actionFilter) {
+            $query .= " WHERE action = :action";
+        }
+    
+        $query .= " ORDER BY timestamp DESC";
+    
+        $stmt = $this->conn->prepare($query);
+    
+        if ($actionFilter) {
+            $stmt->bindParam(':action', $actionFilter);
+        }
+    
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    
 }
 ?>

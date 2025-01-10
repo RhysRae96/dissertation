@@ -18,7 +18,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <nav>
         <ul>
             <li><a href="index.php">Home</a></li>
-            <li><a href="page_unavailable.php">About</a></li>
+            <li><a href="logs.php">Logs</a></li>
             <li><a href="mfa_setup.php">Multifactor</a></li>
         </ul>
         

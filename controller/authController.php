@@ -123,6 +123,8 @@ class AuthController {
     
                 // ✅ Clear the `mfa_required` session variable after successful login
                 unset($_SESSION['mfa_required']);
+
+                $this->logEvent($userData['user_id'], $userData['username'], 'Logged In');
     
                 header("Location: ../view/index.php");
                 exit();
@@ -147,6 +149,7 @@ class AuthController {
             $_SESSION['mfa_required'] = $isMfaEnabled;
             require "../view/login.php";
         }
+        $this->logEvent($userData['user_id'], $userData['username'], 'Logged In');
     }
     
     
@@ -217,6 +220,7 @@ class AuthController {
             // Update the password
             if ($user->changePassword($userID, $newPassword)) {
                 $_SESSION['message'] = "Success: Your password has been updated. Please log in with your new password.";
+                $this->logEvent($_SESSION['user_id'], $_SESSION['username'], 'Changed Password');
                 header("Location: ../view/login.php");
                 exit();
             } else {
@@ -267,6 +271,7 @@ class AuthController {
             // ✅ Update the email address in the database
             if ($user->updateEmail($userId, $newEmail)) {
                 $_SESSION['message'] = "Success: Your email address has been updated.";
+                $this->logEvent($_SESSION['user_id'], $_SESSION['username'], 'Changed Email');
                 header("Location: ../view/change_email.php");
                 exit();
             } else {
@@ -302,6 +307,7 @@ class AuthController {
                 // ✅ Success: Enable MFA for the user
                 $user->enableMfa($userId);
                 $_SESSION['message'] = "Multi-Factor Authentication enabled successfully.";
+                $this->logEvent($_SESSION['user_id'], $_SESSION['username'], 'Enabled MFA');
                 header("Location: ../view/dashboard.php");
             } else {
                 // ❌ Failure: TOTP code is incorrect
@@ -346,6 +352,7 @@ class AuthController {
             // Disable MFA and reset the TOTP secret
             if ($user->disableMfa($userId)) {
                 $_SESSION['message'] = "Success: Multi-Factor Authentication has been disabled.";
+                $this->logEvent($_SESSION['user_id'], $_SESSION['username'], 'Disabled MFA');
                 header("Location: ../view/mfa_setup.php");
                 exit();
             } else {
@@ -354,6 +361,17 @@ class AuthController {
                 exit();
             }
         }
+    }
+
+    public function logEvent($userId, $username, $action) {
+        $user = new User();
+    
+        $query = "INSERT INTO logs (user_id, username, action) VALUES (:user_id, :username, :action)";
+        $stmt = $user->getConnection()->prepare($query);
+        $stmt->bindParam(':user_id', $userId);
+        $stmt->bindParam(':username', $username);
+        $stmt->bindParam(':action', $action);
+        $stmt->execute();
     }
     
 }
