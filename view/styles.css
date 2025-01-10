@@ -361,3 +361,17 @@ main {
     text-decoration: underline;
     color: #0056b3;
 }
+
+/* Style the reCAPTCHA widget */
+.g-recaptcha {
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .form-container {
+        padding: 15px;
+    }
+}

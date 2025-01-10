@@ -25,6 +25,7 @@ if (session_status() === PHP_SESSION_NONE) {
         <div class="auth-buttons">
         <?php if (isset($_SESSION['user_id'])): ?>
             <span class="username-display">Hello, <?php echo htmlspecialchars($_SESSION['username']); ?></span>
+            <a href="change_email.php" class="change-password-button">Change Email</a>
             <a href="change_password.php" class="change-password-button">Change Password</a>
             <a href="logout.php" class="logout-button">Logout</a>
         <?php else: ?>

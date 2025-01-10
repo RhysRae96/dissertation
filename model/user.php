@@ -215,6 +215,15 @@ class User {
         return $stmt->execute();
     }
     
+    public function updateEmail($userId, $newEmail) {
+        $query = "UPDATE users SET email = :email, is_email_verified = 0 WHERE user_id = :user_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':email', $newEmail);
+        $stmt->bindParam(':user_id', $userId);
+        
+        return $stmt->execute();
+    }
+    
 //EXPIRMENTING
     public function generateEmailVerificationToken($userID) {
         $token = bin2hex(random_bytes(16)); // Generate a secure random token

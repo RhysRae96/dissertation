@@ -37,25 +37,34 @@ $isMfaEnabled = isset($_SESSION['mfa_required']) ? $_SESSION['mfa_required'] : f
                 <p class="flash-message error"><?php echo htmlspecialchars($error_message); ?></p>
             <?php endif; ?>
 
-            <form action="../controller/authController.php" method="post">
-                <input type="hidden" name="action" value="login">
+            <form action="../controller/AuthController.php" method="post">
+    <input type="hidden" name="action" value="login">
 
-                <label for="username">Username or Email:</label>
-                <input type="text" id="username" name="username" required>
+    <label for="username">Username or Email:</label>
+    <input type="text" id="username" name="username" required>
 
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" required>
 
-<!-- Conditionally show the MFA field -->
+    <!-- Conditionally show the MFA field -->
 <?php if ($isMfaEnabled && $isMfaEnabled === true): ?>
     <label for="totp_code">Authentication Code:</label>
     <input type="text" id="totp_code" name="totp_code" >
 <?php endif; ?>
 
+    <!-- Google reCAPTCHA v2 Widget -->
+    <div class="g-recaptcha" data-sitekey="6Lcl-bIqAAAAAOKnD2ImtrjsO9Hln7IP5xJx0U4O"></div>
 
-                <button type="submit">Login</button>
+<button type="submit">Log In</button>
             </form>
         </div>
     </div>
 </body>
 </html>
+
+<!-- Add the Google reCAPTCHA API script -->
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+<!-- KEYS 
+ SITE KEY: 6Lcl-bIqAAAAAOKnD2ImtrjsO9Hln7IP5xJx0U4O
+ SECRET KEY: 6Lcl-bIqAAAAAMRSWnmm_cR9wgOuYUCOM98TVT15

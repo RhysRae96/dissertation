@@ -72,6 +72,20 @@ class AuthController {
             $password = $_POST['password'];
             $totpCode = isset($_POST['totp_code']) ? $_POST['totp_code'] : null;
     
+         // ✅ Check the reCAPTCHA response
+        $recaptchaResponse = $_POST['g-recaptcha-response'];
+        $secretKey = '6Lcl-bIqAAAAAMRSWnmm_cR9wgOuYUCOM98TVT15';
+
+        // Verify the reCAPTCHA response with Google
+        $response = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$secretKey}&response={$recaptchaResponse}");
+        $responseKeys = json_decode($response, true);
+
+        if (!$responseKeys["success"]) {
+            $_SESSION['error_message'] = "Error: Invalid reCAPTCHA. Please try again.";
+            header("Location: ../view/login.php");
+            exit();
+        }
+
             $user = new User();
     
             // Check if the account is locked BEFORE proceeding
@@ -212,6 +226,56 @@ class AuthController {
             }
         }
     }
+
+    public function changeEmail() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+    
+        if (!isset($_SESSION['user_id'])) {
+            $_SESSION['error_message'] = "Error: User not logged in.";
+            header("Location: ../view/change_email.php");
+            exit();
+        }
+    
+        if ($_SERVER["REQUEST_METHOD"] === "POST") {
+            $userId = $_SESSION['user_id'];
+            $newEmail = $_POST['new_email'];
+            $password = $_POST['password'];
+            $totpCode = isset($_POST['totp_code']) ? $_POST['totp_code'] : null;
+    
+            $user = new User();
+            $userData = $user->getUserByID($userId);
+    
+            // ✅ Verify the current password
+            if (!password_verify($password, $userData['password'])) {
+                $_SESSION['error_message'] = "Error: Incorrect password.";
+                header("Location: ../view/change_email.php");
+                exit();
+            }
+    
+            // ✅ If MFA is enabled, verify the MFA code
+            if ($userData['is_mfa_enabled']) {
+                $googleAuthenticator = new GoogleAuthenticator();
+                if (!$googleAuthenticator->checkCode($userData['totp_secret'], $totpCode)) {
+                    $_SESSION['error_message'] = "Error: Invalid MFA code.";
+                    header("Location: ../view/change_email.php");
+                    exit();
+                }
+            }
+    
+            // ✅ Update the email address in the database
+            if ($user->updateEmail($userId, $newEmail)) {
+                $_SESSION['message'] = "Success: Your email address has been updated.";
+                header("Location: ../view/change_email.php");
+                exit();
+            } else {
+                $_SESSION['error_message'] = "Error: Could not update email address. Please try again.";
+                header("Location: ../view/change_email.php");
+                exit();
+            }
+        }
+    }
     
 
     public function verifyTotp() {
@@ -306,5 +370,7 @@ if (isset($_POST['action'])) {
         $authController->verifyTotp();
     } elseif ($_POST['action'] === 'disable_mfa') {
         $authController->disableMfa();
+    } elseif ($_POST['action'] === 'change_email') {
+        $authController->changeEmail();
     }
 }
