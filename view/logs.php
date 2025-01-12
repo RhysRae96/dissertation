@@ -15,6 +15,13 @@ if (!isset($_SESSION['user_id'])) {
 $user = new User();
 $actionFilter = isset($_GET['action_filter']) ? $_GET['action_filter'] : null;
 $logs = $user->getLogs($actionFilter);
+
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 2) {
+    $_SESSION['error_message'] = "You do not have permission to access this page.";
+    header("Location: index.php");
+    exit();
+}
+
 ?>
 
 <!DOCTYPE html>

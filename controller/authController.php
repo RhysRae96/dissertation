@@ -72,20 +72,20 @@ class AuthController {
             $password = $_POST['password'];
             $totpCode = isset($_POST['totp_code']) ? $_POST['totp_code'] : null;
     
-         // ✅ Check the reCAPTCHA response
-        $recaptchaResponse = $_POST['g-recaptcha-response'];
-        $secretKey = '6Lcl-bIqAAAAAMRSWnmm_cR9wgOuYUCOM98TVT15';
-
-        // Verify the reCAPTCHA response with Google
-        $response = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$secretKey}&response={$recaptchaResponse}");
-        $responseKeys = json_decode($response, true);
-
-        if (!$responseKeys["success"]) {
-            $_SESSION['error_message'] = "Error: Invalid reCAPTCHA. Please try again.";
-            header("Location: ../view/login.php");
-            exit();
-        }
-
+            // ✅ Check the reCAPTCHA response
+            $recaptchaResponse = $_POST['g-recaptcha-response'];
+            $secretKey = '6Lcl-bIqAAAAAMRSWnmm_cR9wgOuYUCOM98TVT15';
+    
+            // Verify the reCAPTCHA response with Google
+            $response = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$secretKey}&response={$recaptchaResponse}");
+            $responseKeys = json_decode($response, true);
+    
+            if (!$responseKeys["success"]) {
+                $_SESSION['error_message'] = "Error: Invalid reCAPTCHA. Please try again.";
+                header("Location: ../view/login.php");
+                exit();
+            }
+    
             $user = new User();
     
             // Check if the account is locked BEFORE proceeding
@@ -117,16 +117,20 @@ class AuthController {
                 // Reset failed attempts after successful login
                 $user->resetFailedAttempts($identifier);
     
-                // ✅ Set session variables and redirect the user
+                // ✅ Set session variables and store the user's role
                 $_SESSION['user_id'] = $userData['user_id'];
                 $_SESSION['username'] = $userData['username'];
+                $_SESSION['role'] = $userData['role']; // Store the user's role (1 for User, 2 for Admin)
     
-                // ✅ Clear the `mfa_required` session variable after successful login
-                unset($_SESSION['mfa_required']);
-
+                // ✅ Log the login event
                 $this->logEvent($userData['user_id'], $userData['username'], 'Logged In');
     
-                header("Location: ../view/index.php");
+                // ✅ Redirect based on role
+                if ($_SESSION['role'] === 2) {
+                    header("Location: ../view/index.php"); 
+                } else {
+                    header("Location: ../view/index.php"); // Redirect regular user to home page
+                }
                 exit();
             } else {
                 // Increment failed attempts on incorrect login
@@ -149,8 +153,10 @@ class AuthController {
             $_SESSION['mfa_required'] = $isMfaEnabled;
             require "../view/login.php";
         }
+    
         $this->logEvent($userData['user_id'], $userData['username'], 'Logged In');
     }
+    
     
     
     public function changePassword() {

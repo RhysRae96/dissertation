@@ -3,6 +3,15 @@ include 'header.php';
 if (isset($_GET['logout']) && $_GET['logout'] == 1) {
     echo '<p class="flash-message success">You have successfully logged out.</p>';
 }
+
+if (isset($_SESSION['error_message'])): ?>
+    <div class="alert alert-error">
+        <p><?php echo $_SESSION['error_message']; ?></p>
+        <button class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
+    </div>
+<?php
+    unset($_SESSION['error_message']);
+endif;
 ?>
 
 <!-- Main content -->

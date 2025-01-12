@@ -36,14 +36,16 @@ class User {
     public function register($username, $email, $password) {
         $userID = $this->generateUUID();
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-
-        $query = "INSERT INTO " . $this->table . " (user_id, username, email, password) VALUES (:user_id, :username, :email, :password)";
+        $role = 1; // Default role for new users
+    
+        $query = "INSERT INTO " . $this->table . " (user_id, username, email, password, role) VALUES (:user_id, :username, :email, :password, :role)";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':user_id', $userID);
         $stmt->bindParam(':username', $username);
         $stmt->bindParam(':email', $email);
         $stmt->bindParam(':password', $hashedPassword);
-
+        $stmt->bindParam(':role', $role);
+    
         return $stmt->execute();
     }
 
@@ -151,15 +153,14 @@ class User {
         }
         return false;
     }
-
+    
     public function getUserByUsernameOrEmail($identifier) {
-        $query = "SELECT user_id, username, password, is_mfa_enabled FROM " . $this->table . " WHERE username = :identifier OR email = :identifier LIMIT 1";
+        $query = "SELECT user_id, username, password, role, is_mfa_enabled FROM " . $this->table . " WHERE username = :identifier OR email = :identifier LIMIT 1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindValue(':identifier', $identifier);
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
-    
 
     // ✅ MFA Methods
     public function generateTotpSecret() {
@@ -286,6 +287,16 @@ class User {
     
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function isAdmin($userId) {
+        $query = "SELECT role FROM users WHERE user_id = :user_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':user_id', $userId);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        return $result['role'] == 2; // Returns true if the role is admin
     }
     
     
