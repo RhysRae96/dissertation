@@ -1,5 +1,6 @@
 <?php
 require_once "../model/User.php";
+require_once "../controller/EmailController.php";
 use Sonata\GoogleAuthenticator\GoogleAuthenticator;
 
 class AuthController {
@@ -31,36 +32,33 @@ class AuthController {
     
             $user = new User();
     
-            // Validate password
-            try {
-                $this->validatePassword($password);
-            } catch (Exception $e) {
-                $_SESSION['message'] = "Error: " . $e->getMessage();
-                header("Location: ../view/register.php");
-                exit();
-            }
-    
             // Check if the username or email already exists
             if ($user->userExists($username, $email)) {
-                $_SESSION['message'] = "Error: Username or email already in use. Please choose another.";
+                $_SESSION['message'] = "Error: Username or email already in use.";
                 header("Location: ../view/register.php");
                 exit();
             }
     
-            // Continue with registration if username and email are unique
-            if ($user->register($username, $email, $password)) {
-                $_SESSION['message'] = "Success: Registration complete. Please log in.";
+            // Generate a unique activation token
+            $activationToken = bin2hex(random_bytes(16));
+    
+            // Register the user and store the activation token
+            if ($user->register($username, $email, $password, $activationToken)) {
+                // ✅ Send the verification email
+                $emailController = new EmailController();
+                $emailController->sendVerificationEmail($email, $username, $activationToken);
+    
+                $_SESSION['message'] = "Registration successful! Please check your email to activate your account.";
                 header("Location: ../view/login.php");
                 exit();
             } else {
-                $_SESSION['message'] = "Error: Could not register user. Please try again.";
+                $_SESSION['message'] = "Error: Registration failed. Please try again.";
                 header("Location: ../view/register.php");
                 exit();
             }
-        } else {
-            require "../view/register.php";
         }
     }
+    
 
     public function login() {
         if (session_status() === PHP_SESSION_NONE) {

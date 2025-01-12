@@ -33,22 +33,21 @@ class User {
         return $this->conn;
     }
 
-    public function register($username, $email, $password) {
+    public function register($username, $email, $password, $activationToken) {
         $userID = $this->generateUUID();
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-        $role = 1; // Default role for new users
     
-        $query = "INSERT INTO " . $this->table . " (user_id, username, email, password, role) VALUES (:user_id, :username, :email, :password, :role)";
+        $query = "INSERT INTO " . $this->table . " (user_id, username, email, password, activation_token, is_active) VALUES (:user_id, :username, :email, :password, :activation_token, 0)";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':user_id', $userID);
         $stmt->bindParam(':username', $username);
         $stmt->bindParam(':email', $email);
         $stmt->bindParam(':password', $hashedPassword);
-        $stmt->bindParam(':role', $role);
+        $stmt->bindParam(':activation_token', $activationToken);
     
         return $stmt->execute();
     }
-
+    
     public function userExists($username, $email) {
         $query = "SELECT * FROM " . $this->table . " WHERE username = :username OR email = :email";
         $stmt = $this->conn->prepare($query);
@@ -153,7 +152,7 @@ class User {
         }
         return false;
     }
-    
+
     public function getUserByUsernameOrEmail($identifier) {
         $query = "SELECT user_id, username, password, role, is_mfa_enabled FROM " . $this->table . " WHERE username = :identifier OR email = :identifier LIMIT 1";
         $stmt = $this->conn->prepare($query);
@@ -245,29 +244,23 @@ class User {
     }
     
     public function verifyEmail($token) {
-        $query = "SELECT * FROM email_verifications WHERE token = :token AND expires_at > NOW()";
+        $query = "SELECT * FROM users WHERE activation_token = :token AND is_active = 0";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':token', $token);
         $stmt->execute();
-        $verification = $stmt->fetch(PDO::FETCH_ASSOC);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
-        if ($verification) {
-            $userID = $verification['user_id'];
-            // Update the user's email verification status
-            $updateQuery = "UPDATE users SET is_email_verified = 1 WHERE user_id = :user_id";
+        if ($user) {
+            // Activate the account
+            $updateQuery = "UPDATE users SET is_active = 1, activation_token = NULL WHERE user_id = :user_id";
             $updateStmt = $this->conn->prepare($updateQuery);
-            $updateStmt->bindParam(':user_id', $userID);
+            $updateStmt->bindParam(':user_id', $user['user_id']);
             $updateStmt->execute();
     
-            // Remove the token once verified
-            $deleteQuery = "DELETE FROM email_verifications WHERE token = :token";
-            $deleteStmt = $this->conn->prepare($deleteQuery);
-            $deleteStmt->bindParam(':token', $token);
-            $deleteStmt->execute();
-    
-            return true; // Verification successful
+            return true;
         }
-        return false; // Verification failed
+    
+        return false;
     }
 
     public function getLogs($actionFilter = null) {
