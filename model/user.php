@@ -120,6 +120,8 @@ class User {
             $lockStmt->bindValue(':expiryTime', $expiryTime);
             $lockStmt->bindValue(':identifier', $identifier);
             $lockStmt->execute();
+
+            $this->logEvent($_SESSION['user_id'], $_SESSION['username'], 'Locked Accounts');
         }
 
         return $remainingAttempts;
@@ -154,7 +156,7 @@ class User {
     }
 
     public function getUserByUsernameOrEmail($identifier) {
-        $query = "SELECT user_id, username, password, role, is_mfa_enabled FROM " . $this->table . " WHERE username = :identifier OR email = :identifier LIMIT 1";
+        $query = "SELECT user_id, username, password, role, is_mfa_enabled, is_active FROM " . $this->table . " WHERE username = :identifier OR email = :identifier LIMIT 1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindValue(':identifier', $identifier);
         $stmt->execute();
@@ -244,22 +246,21 @@ class User {
     }
     
     public function verifyEmail($token) {
-        $query = "SELECT * FROM users WHERE activation_token = :token AND is_active = 0";
+        // Check if the token exists in the users table
+        $query = "SELECT user_id FROM users WHERE activation_token = :token AND is_active = 0";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':token', $token);
         $stmt->execute();
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
+        // If the token is valid, update the is_active field
         if ($user) {
-            // Activate the account
             $updateQuery = "UPDATE users SET is_active = 1, activation_token = NULL WHERE user_id = :user_id";
             $updateStmt = $this->conn->prepare($updateQuery);
             $updateStmt->bindParam(':user_id', $user['user_id']);
             $updateStmt->execute();
-    
             return true;
         }
-    
         return false;
     }
 

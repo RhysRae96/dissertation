@@ -22,7 +22,7 @@ class EmailController {
             $mail->SMTPDebug = 0;
 
             // Recipients
-            $mail->setFrom('rhysjamesrae@gmail.com', 'Your Website');
+            $mail->setFrom('rhysjamesrae@gmail.com', 'Uni Authenication Project');
             $mail->addAddress($recipientEmail, $recipientName);
 
             // Content

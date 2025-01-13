@@ -48,6 +48,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 2) {
                     <option value="Disabled MFA" <?php if ($actionFilter === 'Disabled MFA') echo 'selected'; ?>>Disabled MFA</option>
                     <option value="Changed Email" <?php if ($actionFilter === 'Changed Email') echo 'selected'; ?>>Changed Email</option>
                     <option value="Changed Password" <?php if ($actionFilter === 'Changed Password') echo 'selected'; ?>>Changed Password</option>
+                    <option value="Failed Login" <?php if ($actionFilter === 'Failed Login') echo 'selected'; ?>>Failed Login</option>
+                    <option value="Locked Accounts" <?php if ($actionFilter === 'Locked Accounts') echo 'selected'; ?>>Locked Accounts</option>
                 </select>
                 <button type="submit">Filter</button>
             </form>

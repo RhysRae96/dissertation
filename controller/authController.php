@@ -70,35 +70,20 @@ class AuthController {
             $password = $_POST['password'];
             $totpCode = isset($_POST['totp_code']) ? $_POST['totp_code'] : null;
     
-            // ✅ Check the reCAPTCHA response
-            $recaptchaResponse = $_POST['g-recaptcha-response'];
-            $secretKey = '6Lcl-bIqAAAAAMRSWnmm_cR9wgOuYUCOM98TVT15';
-    
-            // Verify the reCAPTCHA response with Google
-            $response = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$secretKey}&response={$recaptchaResponse}");
-            $responseKeys = json_decode($response, true);
-    
-            if (!$responseKeys["success"]) {
-                $_SESSION['error_message'] = "Error: Invalid reCAPTCHA. Please try again.";
-                header("Location: ../view/login.php");
-                exit();
-            }
-    
             $user = new User();
-    
-            // Check if the account is locked BEFORE proceeding
-            if ($user->isAccountLocked($identifier)) {
-                $_SESSION['error_message'] = "Your account is locked due to too many failed login attempts. Please try again after 5 minutes.";
-                header("Location: ../view/login.php");
-                exit();
-            }
-    
-            // Fetch user data and verify the password
             $userData = $user->getUserByUsernameOrEmail($identifier);
     
             // ✅ Check if the user exists and the password is correct
             if ($userData && password_verify($password, $userData['password'])) {
-                // Check if the user has MFA enabled
+    
+                // ❌ Check if the user is not verified
+                if ($userData['is_active'] == 0) {
+                    $_SESSION['error_message'] = "Please verify your email before logging in.";
+                    header("Location: ../view/login.php");
+                    exit();
+                }
+    
+                // ✅ Check if the user has MFA enabled
                 if ($userData['is_mfa_enabled']) {
                     $_SESSION['mfa_required'] = true;
     
@@ -112,10 +97,10 @@ class AuthController {
                     $_SESSION['mfa_required'] = false;
                 }
     
-                // Reset failed attempts after successful login
+                // ✅ Reset failed attempts after successful login
                 $user->resetFailedAttempts($identifier);
     
-                // ✅ Set session variables and store the user's role
+                // ✅ Set session variables
                 $_SESSION['user_id'] = $userData['user_id'];
                 $_SESSION['username'] = $userData['username'];
                 $_SESSION['role'] = $userData['role']; // Store the user's role (1 for User, 2 for Admin)
@@ -131,30 +116,17 @@ class AuthController {
                 }
                 exit();
             } else {
-                // Increment failed attempts on incorrect login
+                // ❌ Increment failed attempts on incorrect login
                 $remainingAttempts = $user->incrementFailedAttempts($identifier);
     
-                // Provide feedback to the user about remaining attempts
+                // ❌ Provide feedback to the user about remaining attempts
                 $_SESSION['error_message'] = "Invalid username/email or password. You have $remainingAttempts attempt(s) remaining.";
+                $this->logEvent($userData['user_id'], $userData['username'], 'Failed Login');
                 header("Location: ../view/login.php");
                 exit();
             }
-        } else {
-            // ✅ Check if MFA is required before showing the login form
-            $isMfaEnabled = false;
-            if (isset($_SESSION['username'])) {
-                $user = new User();
-                $userData = $user->getUserByUsernameOrEmail($_SESSION['username']);
-                $isMfaEnabled = $userData['is_mfa_enabled'];
-            }
-    
-            $_SESSION['mfa_required'] = $isMfaEnabled;
-            require "../view/login.php";
         }
-    
-        $this->logEvent($userData['user_id'], $userData['username'], 'Logged In');
     }
-    
     
     
     public function changePassword() {
