@@ -1,5 +1,11 @@
 <?php
 include 'header.php';
+
+if (isset($_SESSION['message'])) {
+    echo '<p class="flash-message">' . $_SESSION['message'] . '</p>';
+    unset($_SESSION['message']);
+}
+
 if (isset($_GET['logout']) && $_GET['logout'] == 1) {
     echo '<p class="flash-message success">You have successfully logged out.</p>';
 }

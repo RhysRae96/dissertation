@@ -26,7 +26,11 @@ if (session_status() === PHP_SESSION_NONE) {
         <?php if (isset($_SESSION['user_id'])): ?>
             <span class="username-display">Hello, <?php echo htmlspecialchars($_SESSION['username']); ?></span>
             <a href="change_email.php" class="change-password-button">Change Email</a>
-            <a href="change_password.php" class="change-password-button">Change Password</a>
+            <form action="../controller/AuthController.php" method="post" style="display: inline;">
+    <input type="hidden" name="action" value="send_change_password_email">
+    <button type="submit" class="change-password-button">Change Password</button>
+</form>
+
             <a href="logout.php" class="logout-button">Logout</a>
         <?php else: ?>
             <a href="login.php" class="login-button">Login</a>

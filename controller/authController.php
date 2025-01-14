@@ -350,6 +350,35 @@ class AuthController {
         $stmt->execute();
     }
     
+    public function sendChangePasswordEmail() {
+       // session_start();
+    
+        // Ensure the user is logged in
+        if (!isset($_SESSION['user_id'])) {
+            echo "You must be logged in to change your password.";
+            return;
+        }
+    
+        // Get user details
+        $user = new User();
+        $userData = $user->getUserByID($_SESSION['user_id']);
+    
+        if ($userData) {
+            $changePasswordLink = "http://localhost/dissertation/view/change_password.php";
+    
+            // Use your existing email controller to send the email
+            $emailController = new EmailController();
+            $emailController->sendChangePasswordEmail($userData['email'], $userData['username'], $changePasswordLink);
+    
+            $_SESSION['message'] = "An email with a password change link has been sent to your email.";
+            header("Location: ../view/index.php");
+            exit();
+        } else {
+            echo "User data not found.";
+        }
+    }
+    
+    
 }
 
 if (isset($_POST['action'])) {
@@ -366,5 +395,7 @@ if (isset($_POST['action'])) {
         $authController->disableMfa();
     } elseif ($_POST['action'] === 'change_email') {
         $authController->changeEmail();
+    } elseif ($_POST['action'] === 'send_change_password_email') {
+        $authController->sendChangePasswordEmail();
     }
 }
