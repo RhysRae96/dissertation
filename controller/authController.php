@@ -1,6 +1,9 @@
 <?php
 require_once "../model/User.php";
 require_once "../controller/EmailController.php";
+require_once '../vendor/autoload.php'; // Ensure the HIBP library is loaded
+use Icawebdesign\Hibp\Password\PwnedPassword;
+use Icawebdesign\Hibp\HibpHttp;
 use Sonata\GoogleAuthenticator\GoogleAuthenticator;
 
 class AuthController {
@@ -61,7 +64,6 @@ class AuthController {
         }
     }
     
-
     public function login() {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -77,6 +79,29 @@ class AuthController {
     
             // ✅ Check if the user exists and the password is correct
             if ($userData && password_verify($password, $userData['password'])) {
+                
+                // ✅ Set session variables first
+                $_SESSION['user_id'] = $userData['user_id'];
+                $_SESSION['username'] = $userData['username'];
+                $_SESSION['role'] = $userData['role']; // Store the user's role (1 for User, 2 for Admin)
+    
+                // ❌ Check if the password has been breached
+                $pwnedPassword = new PwnedPassword(new HibpHttp());
+                $hashedPassword = sha1($password); // Convert the password to SHA-1 hash
+    
+                try {
+                    $breachCount = $pwnedPassword->rangeFromHash($hashedPassword);
+                    if ($breachCount > 0) {
+                        $_SESSION['warning_message'] = "Your password has been found in $breachCount breaches. Please change your password immediately.";
+                        header("Location: ../view/index.php");
+                        exit();
+                    }
+                } catch (Exception $e) {
+                    // Handle any errors during the password check
+                    $_SESSION['error_message'] = "Unable to check password breaches at the moment. Please try again later.";
+                    header("Location: ../view/login.php");
+                    exit();
+                }
     
                 // ❌ Check if the user is not verified
                 if ($userData['is_active'] == 0) {
@@ -102,20 +127,11 @@ class AuthController {
                 // ✅ Reset failed attempts after successful login
                 $user->resetFailedAttempts($identifier);
     
-                // ✅ Set session variables
-                $_SESSION['user_id'] = $userData['user_id'];
-                $_SESSION['username'] = $userData['username'];
-                $_SESSION['role'] = $userData['role']; // Store the user's role (1 for User, 2 for Admin)
-    
                 // ✅ Log the login event
                 $this->logEvent($userData['user_id'], $userData['username'], 'Logged In');
     
                 // ✅ Redirect based on role
-                if ($_SESSION['role'] === 2) {
-                    header("Location: ../view/index.php"); 
-                } else {
-                    header("Location: ../view/index.php"); // Redirect regular user to home page
-                }
+                header("Location: ../view/index.php");
                 exit();
             } else {
                 // ❌ Increment failed attempts on incorrect login
@@ -128,8 +144,7 @@ class AuthController {
                 exit();
             }
         }
-    }
-    
+    }    
     
     public function changePassword() {
         if (session_status() === PHP_SESSION_NONE) {

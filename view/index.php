@@ -19,11 +19,16 @@ if (isset($_SESSION['error_message'])): ?>
     unset($_SESSION['error_message']);
 endif;
 ?>
+<?php if (isset($_SESSION['warning_message'])): ?>
+    <p class="flash-message warning"><?php echo htmlspecialchars($_SESSION['warning_message']); ?></p>
+    <?php unset($_SESSION['warning_message']); ?>
+<?php endif; ?>
 
 <!-- Main content -->
 <main>
     <h1>Hello World</h1>
     <p>Welcome to our homepage!</p>
+    <link rel="stylesheet" href="styles.css">
 </main>
 
 </body>

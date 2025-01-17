@@ -432,3 +432,12 @@ tr:hover {
     cursor: pointer;
     color: #721c24;
 }
+
+.flash-message.warning {
+    color: #a94442;
+    background-color: #f2dede;
+    border: 1px solid #ebccd1;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+}
