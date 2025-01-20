@@ -292,6 +292,57 @@ class User {
     
         return $result['role'] == 2; // Returns true if the role is admin
     }
+
+    public function getUserByEmail($email) {
+        $connection = $this->getConnection();
+        $query = "SELECT * FROM users WHERE email = :email";
+        $stmt = $connection->prepare($query);
+        $stmt->bindParam(':email', $email);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC); // Fetch user data as an associative array
+    }
+    
+    
+    public function storePasswordResetToken($email, $token, $tokenExpiry) {
+        $connection = $this->getConnection();
+        $query = "UPDATE users SET password_reset_token = :token, token_expiry = :token_expiry WHERE email = :email";
+        $stmt = $connection->prepare($query);
+        $stmt->bindParam(':token', $token);
+        $stmt->bindParam(':token_expiry', $tokenExpiry);
+        $stmt->bindParam(':email', $email);
+        $stmt->execute();
+    }
+    
+    
+    public function verifyPasswordResetToken($token) {
+        $connection = $this->getConnection();
+        $query = "SELECT email FROM users WHERE password_reset_token = :token AND token_expiry > NOW()";
+        $stmt = $connection->prepare($query);
+        $stmt->bindParam(':token', $token);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ? $result['email'] : false;
+    }
+    
+    public function invalidatePasswordResetToken($token) {
+        $connection = $this->getConnection();
+        $query = "UPDATE users SET password_reset_token = NULL, token_expiry = NULL WHERE password_reset_token = :token";
+        $stmt = $connection->prepare($query);
+        $stmt->bindParam(':token', $token);
+        $stmt->execute();
+    }
+    
+    
+    public function updatePassword($email, $newPassword) {
+        $connection = $this->getConnection();
+        $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
+        $query = "UPDATE users SET password = :password WHERE email = :email";
+        $stmt = $connection->prepare($query);
+        $stmt->bindParam(':password', $hashedPassword);
+        $stmt->bindParam(':email', $email);
+        $stmt->execute();
+    }
+    
     
     
 }

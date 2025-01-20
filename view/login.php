@@ -57,6 +57,10 @@ $isMfaEnabled = isset($_SESSION['mfa_required']) ? $_SESSION['mfa_required'] : f
 
 <button type="submit">Log In</button>
             </form>
+                        <!-- Password Recovery Link -->
+                        <div class="password-recovery">
+                <p><a href="password_recovery_request.php">Forgot your password?</a></p>
+            </div>
         </div>
     </div>
 </body>

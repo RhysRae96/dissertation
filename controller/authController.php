@@ -394,7 +394,80 @@ class AuthController {
             echo "User data not found.";
         }
     }
+
+    public function passwordRecoveryRequest() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
     
+        if ($_SERVER["REQUEST_METHOD"] == "POST") {
+            $email = $_POST['email'];
+            $user = new User();
+            $userData = $user->getUserByEmail($email);
+    
+            if ($userData) {
+                // Generate a secure token
+                $token = bin2hex(random_bytes(32));
+                $tokenExpiry = date("Y-m-d H:i:s", strtotime("+1 hour")); // Token expires in 1 hour
+    
+                // Store the token and its expiry in the database
+                $user->storePasswordResetToken($email, $token, $tokenExpiry);
+    
+                // Send the password reset email
+                $resetLink = "http://localhost/dissertation/view/password_reset.php?token=$token";
+                $emailController = new EmailController();
+                $emailController->sendPasswordResetEmail($email, $userData['username'], $resetLink);
+    
+                $_SESSION['message'] = "A password reset link has been sent to your email address.";
+                header("Location: ../view/login.php");
+            } else {
+                $_SESSION['error_message'] = "No account found with that email address.";
+                header("Location: ../view/password_recovery_request.php");
+            }
+            exit();
+        }
+    }
+
+    public function passwordReset() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+    
+        if ($_SERVER["REQUEST_METHOD"] == "POST") {
+            $token = $_POST['token'];
+            $newPassword = $_POST['new_password'];
+            $confirmPassword = $_POST['confirm_password'];
+    
+            // Check if passwords match
+            if ($newPassword !== $confirmPassword) {
+                $_SESSION['error_message'] = "Passwords do not match.";
+                header("Location: ../view/password_reset.php?token=" . urlencode($token));
+                exit();
+            }
+    
+            // Validate password strength
+            if (mb_strlen($newPassword, 'UTF-8') < 8) {
+                $_SESSION['error_message'] = "Password must be at least 8 characters long.";
+                header("Location: ../view/password_reset.php?token=" . urlencode($token));
+                exit();
+            }
+    
+            $user = new User();
+            $email = $user->verifyPasswordResetToken($token);
+    
+            if ($email) {
+                $user->updatePassword($email, $newPassword);
+                $user->invalidatePasswordResetToken($token);
+    
+                $_SESSION['message'] = "Your password has been reset. Please log in.";
+                header("Location: ../view/login.php");
+            } else {
+                $_SESSION['error_message'] = "Invalid or expired token.";
+                header("Location: ../view/password_reset.php?token=" . urlencode($token));
+            }
+            exit();
+        }
+    }
     
 }
 
@@ -414,5 +487,10 @@ if (isset($_POST['action'])) {
         $authController->changeEmail();
     } elseif ($_POST['action'] === 'send_change_password_email') {
         $authController->sendChangePasswordEmail();
+    } elseif ($_POST['action'] === 'password_recovery_request') {
+        $authController->passwordRecoveryRequest();
+    } elseif ($_POST['action'] === 'password_reset') {
+        $authController->passwordReset();
     }
+    
 }
