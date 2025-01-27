@@ -381,7 +381,7 @@ class AuthController {
         $userData = $user->getUserByID($_SESSION['user_id']);
     
         if ($userData) {
-            $changePasswordLink = "http://localhost/dissertation/view/change_password.php";
+            $changePasswordLink = "http://localhost/dissertation_usability/view/change_password.php";
     
             // Use your existing email controller to send the email
             $emailController = new EmailController();

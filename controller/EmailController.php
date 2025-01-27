@@ -94,7 +94,7 @@ class EmailController {
             $mail->addAddress($recipientEmail, $recipientName);
 
             // Email content
-            $verificationLink = "http://localhost/dissertation/view/verify.php?token=" . $activationToken;
+            $verificationLink = "http://localhost/dissertation_usability/view/verify.php?token=" . $activationToken;
 
             $mail->isHTML(true);
             $mail->Subject = 'Verify Your Account';

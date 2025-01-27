@@ -4,7 +4,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 class Database {
     private $host = "localhost";
-    private $db_name = "dissertation";
+    private $db_name = "dissertation_usability";
     private $username = "root";
     private $password = "";
     public $conn;
